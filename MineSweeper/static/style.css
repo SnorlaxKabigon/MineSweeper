@@ -1,0 +1,173 @@
+:root {
+    --cell-size: 30px;
+    --bg-color: #c0c0c0;
+    --border-light: #fff;
+    --border-dark: #808080;
+    --primary-color: #007bff;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f0f0;
+    touch-action: manipulation; /* Prevent double-tap zoom */
+    overflow: hidden; /* Prevent body scroll, handle in app-container */
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 100%;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--bg-color);
+    border-bottom: 2px solid var(--border-dark);
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.smiley-btn {
+    font-size: 2rem;
+    cursor: pointer;
+    user-select: none;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffff00; /* Default yellow */
+    border-radius: 50%;
+    border: 2px solid #000;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-around;
+    padding: 5px;
+    background-color: #ddd;
+    font-weight: bold;
+}
+
+.game-board {
+    flex: 1;
+    overflow: auto;
+    display: grid;
+    justify-content: center;
+    align-content: center;
+    padding: 20px;
+    background-color: #888;
+    /* Grid template columns will be set by JS */
+}
+
+.cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    background-color: var(--bg-color);
+    border-top: 2px solid var(--border-light);
+    border-left: 2px solid var(--border-light);
+    border-right: 2px solid var(--border-dark);
+    border-bottom: 2px solid var(--border-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cell.revealed {
+    border: 1px solid #999;
+    background-color: #ddd;
+}
+
+.cell.mine {
+    background-color: red;
+}
+
+.cell.flag {
+    color: red;
+}
+
+.cell.question {
+    color: blue;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-form input {
+    display: block;
+    width: 90%;
+    margin: 10px auto;
+    padding: 8px;
+}
+
+.difficulty-btn, .tab-btn, button {
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.skin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.skin-item {
+    border: 1px solid #ccc;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.skin-item.owned {
+    background-color: #e0ffe0;
+}
+
+.skin-item.selected {
+    border: 2px solid blue;
+}
