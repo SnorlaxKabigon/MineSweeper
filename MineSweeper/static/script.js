@@ -600,12 +600,18 @@ async function submitScore() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             difficulty: currentState.difficulty,
-            time: currentState.timer
+            time: currentState.timer,
+            mistakes: currentState.mistakes
         })
     });
     const data = await res.json();
     currentState.user.coins = data.total_coins;
-    alert(`You earned ${data.coins_earned} coins! Total: ${data.total_coins}`);
+    
+    let msg = `You earned ${data.coins_earned} coins! Total: ${data.total_coins}`;
+    if (data.message) {
+        msg = data.message + "\n" + msg;
+    }
+    alert(msg);
 }
 
 async function handleRecovery() {

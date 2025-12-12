@@ -224,12 +224,13 @@ def get_achievements():
 def finish_game():
     data = request.json
     difficulty = data.get('difficulty')
+    mistakes = data.get('mistakes', 0)
     try:
         time_taken = int(data.get('time'))
     except (ValueError, TypeError):
         time_taken = 9999 # Error case
 
-    print(f"DEBUG: Difficulty={difficulty}, Time={time_taken}")
+    print(f"DEBUG: Difficulty={difficulty}, Time={time_taken}, Mistakes={mistakes}")
     
     coins_earned = 0
     
@@ -255,6 +256,11 @@ def finish_game():
         else:
             coins_earned = 10
         
+    message = None
+    if mistakes == 0:
+        coins_earned *= 2
+        message = "No Miss Clear! Double Coins!"
+
     print(f"DEBUG: Coins Earned={coins_earned}")
 
     current_user.coins += coins_earned
@@ -267,7 +273,7 @@ def finish_game():
     
     db.session.commit()
     
-    return jsonify({'coins_earned': coins_earned, 'total_coins': current_user.coins})
+    return jsonify({'coins_earned': coins_earned, 'total_coins': current_user.coins, 'message': message})
 
 @app.route('/api/game/recover', methods=['POST'])
 @login_required
