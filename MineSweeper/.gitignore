@@ -22,3 +22,7 @@ instance/
 
 # Other
 .DS_Store
+MakeMine.txt
+
+# Ignore external directory
+KakurenboMaster/
