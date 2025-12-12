@@ -2,15 +2,16 @@
 const CONFIG = {
     easy: { rows: 9, cols: 9, mines: 10 },
     normal: { rows: 16, cols: 16, mines: 40 },
-    hard: { rows: 32, cols: 32, mines: 199 }
+    hard: { rows: 32, cols: 32, mines: 200 }
 };
 
 const SKINS = [
-    { id: 'default', icon: '😊', cost: 0 },
-    { id: 'cool', icon: '😎', cost: 50 },
-    { id: 'cowboy', icon: '🤠', cost: 100 },
+    { id: 'default', icon: '🙂', cost: 0 },
+    { id: 'chee', icon: '🤓', cost: 1 },
+    { id: 'sleep', icon: '😴', cost: 10 },
     { id: 'alien', icon: '👽', cost: 200 },
-    { id: 'robot', icon: '🤖', cost: 500 }
+    { id: 'robot', icon: '🤖', cost: 500 },
+    { id: 'devil', icon: '😈', cost: 1000 }
 ];
 
 // State
@@ -23,6 +24,7 @@ let currentState = {
     timer: 0,
     timerInterval: null,
     firstClick: true,
+    mode: 'dig', // 'dig' or 'flag'
     user: null // { username, coins, current_skin, owned_skins }
 };
 
@@ -35,22 +37,46 @@ const smileyBtn = document.getElementById('smiley-face');
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     checkUserSession();
-    initGame('easy');
+    // initGame('easy'); // Don't init game until logged in
     setupEventListeners();
 });
 
 function setupEventListeners() {
     // Header Buttons
     document.getElementById('settings-btn').addEventListener('click', () => showModal('settings-modal'));
+    document.getElementById('ranking-btn').addEventListener('click', () => {
+        showModal('ranking-modal');
+        fetchRankings('easy');
+    });
+    document.getElementById('achievements-btn').addEventListener('click', () => {
+        showModal('achievements-modal');
+        fetchAchievements();
+    });
     document.getElementById('user-btn').addEventListener('click', () => {
         if (currentState.user) {
-            updateUserProfile();
+            updateUIWithUser();
             showModal('user-modal');
         } else {
             showModal('auth-modal');
         }
     });
     smileyBtn.addEventListener('click', () => initGame(currentState.difficulty));
+
+    // Mode Toggle Buttons
+    const digBtn = document.getElementById('mode-dig');
+    const flagBtn = document.getElementById('mode-flag');
+
+    digBtn.addEventListener('click', () => {
+        currentState.mode = 'dig';
+        digBtn.classList.add('active');
+        flagBtn.classList.remove('active');
+    });
+
+    flagBtn.addEventListener('click', () => {
+        currentState.mode = 'flag';
+        flagBtn.classList.add('active');
+        digBtn.classList.remove('active');
+    });
 
     // Modals
     document.querySelectorAll('.close-modal').forEach(btn => {
@@ -88,6 +114,15 @@ function setupEventListeners() {
         });
     });
 
+    // Rankings
+    document.querySelectorAll('.rank-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.rank-tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            fetchRankings(e.target.dataset.diff);
+        });
+    });
+
     // Game Over / Recovery
     document.getElementById('recover-btn').addEventListener('click', handleRecovery);
     document.getElementById('give-up-btn').addEventListener('click', () => {
@@ -97,6 +132,10 @@ function setupEventListeners() {
     document.getElementById('restart-btn').addEventListener('click', () => {
         document.getElementById('game-over-modal').classList.add('hidden');
         initGame(currentState.difficulty);
+    });
+
+    document.getElementById('back-to-game-btn').addEventListener('click', () => {
+        document.getElementById('game-over-modal').classList.add('hidden');
     });
 
     // Shop
@@ -137,12 +176,7 @@ function initGame(difficulty) {
             handleCellRightClick(i);
         });
         
-        // Long press simulation for mobile
-        let pressTimer;
-        cell.addEventListener('touchstart', () => {
-            pressTimer = setTimeout(() => handleCellRightClick(i), 500);
-        });
-        cell.addEventListener('touchend', () => clearTimeout(pressTimer));
+        // Removed long press simulation as per user request
 
         boardEl.appendChild(cell);
         currentState.board.push({
@@ -202,7 +236,15 @@ function countMinesAround(index, rows, cols) {
 }
 
 function handleCellClick(index) {
-    if (currentState.gameOver || currentState.board[index].flagged || currentState.board[index].question) return;
+    if (currentState.gameOver) return;
+
+    // If in flag mode, toggle flag instead of revealing
+    if (currentState.mode === 'flag') {
+        handleCellRightClick(index);
+        return;
+    }
+
+    if (currentState.board[index].flagged || currentState.board[index].question) return;
     
     if (currentState.firstClick) {
         placeMines(index);
@@ -226,22 +268,30 @@ function handleCellRightClick(index) {
     
     const cellData = currentState.board[index];
     const cellEl = boardEl.children[index];
+    const config = CONFIG[currentState.difficulty];
     
     if (!cellData.flagged && !cellData.question) {
         cellData.flagged = true;
         cellEl.classList.add('flag');
         cellEl.innerHTML = '<i class="fas fa-flag"></i>';
+        updateMinesCounter(-1);
     } else if (cellData.flagged) {
         cellData.flagged = false;
         cellData.question = true;
         cellEl.classList.remove('flag');
         cellEl.classList.add('question');
         cellEl.textContent = '?';
+        updateMinesCounter(1);
     } else {
         cellData.question = false;
         cellEl.classList.remove('question');
         cellEl.textContent = '';
     }
+}
+
+function updateMinesCounter(change) {
+    const currentMines = parseInt(minesDisplay.textContent);
+    minesDisplay.textContent = currentMines + change;
 }
 
 function revealCell(index) {
@@ -284,19 +334,30 @@ function handleMineHit(index) {
     currentState.mistakes++;
     if (currentState.mistakes >= 3) {
         gameOver(false);
+    } else {
+        // Check if win condition is met even after hitting a mine (if mistakes < 3)
+        // But wait, if you hit a mine, that cell is revealed.
+        // The win condition is "revealedCount === totalCells - config.mines".
+        // If you reveal a mine, it counts towards revealedCount in the current logic?
+        // Let's check checkWin logic.
+        checkWin();
     }
 }
 
 function checkWin() {
     const config = CONFIG[currentState.difficulty];
     const totalCells = config.rows * config.cols;
-    let revealedCount = 0;
+    let revealedSafeCells = 0;
     
     currentState.board.forEach(cell => {
-        if (cell.revealed) revealedCount++;
+        if (cell.revealed && !cell.isMine) {
+            revealedSafeCells++;
+        }
     });
     
-    if (revealedCount === totalCells - config.mines) {
+    // Win if all safe cells are revealed.
+    // Mines don't need to be flagged, just all safe cells revealed.
+    if (revealedSafeCells === totalCells - config.mines) {
         gameOver(true);
     }
 }
@@ -305,11 +366,17 @@ function gameOver(win) {
     currentState.gameOver = true;
     clearInterval(currentState.timerInterval);
     
+    if (!win) {
+        // Record loss
+        fetch('/api/game/fail', { method: 'POST' });
+    }
+
     const modal = document.getElementById('game-over-modal');
     const title = document.getElementById('game-over-title');
     const msg = document.getElementById('game-over-message');
     const recoveryOpts = document.getElementById('recovery-options');
     const restartBtn = document.getElementById('restart-btn');
+    const backToGameBtn = document.getElementById('back-to-game-btn');
     
     modal.classList.remove('hidden');
     
@@ -318,6 +385,7 @@ function gameOver(win) {
         msg.textContent = `Time: ${currentState.timer}s`;
         recoveryOpts.classList.add('hidden');
         restartBtn.classList.remove('hidden');
+        backToGameBtn.classList.remove('hidden');
         
         if (currentState.user) {
             submitScore();
@@ -326,12 +394,14 @@ function gameOver(win) {
         title.textContent = "Game Over";
         msg.textContent = "You hit 3 mines!";
         restartBtn.classList.add('hidden');
+        backToGameBtn.classList.add('hidden');
         
         if (currentState.user && currentState.user.coins >= 20) {
             recoveryOpts.classList.remove('hidden');
         } else {
             recoveryOpts.classList.add('hidden');
             restartBtn.classList.remove('hidden');
+            backToGameBtn.classList.remove('hidden');
         }
     }
 }
@@ -354,8 +424,118 @@ async function checkUserSession() {
         if (data.authenticated) {
             currentState.user = data;
             updateUIWithUser();
+            initGame('easy'); // Start game only after login
+        } else {
+            showModal('auth-modal');
+            // Prevent closing auth modal if not logged in
+            document.querySelector('#auth-modal .close-modal').style.display = 'none';
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function updateUIWithUser() {
+    if (!currentState.user) {
+        console.warn('updateUIWithUser called but no user in state');
+        return;
+    }
+
+    console.log('Updating UI with user:', currentState.user);
+
+    const nameEl = document.getElementById('profile-name');
+    if (nameEl) {
+        nameEl.textContent = currentState.user.username || 'Guest';
+    }
+
+    const coinsEl = document.getElementById('profile-coins');
+    if (coinsEl) {
+        coinsEl.textContent = currentState.user.coins !== undefined ? currentState.user.coins : 0;
+    }
+    
+    const titleEl = document.getElementById('profile-title');
+    if (titleEl) {
+        if (currentState.user.current_title) {
+            titleEl.textContent = currentState.user.current_title;
+            titleEl.style.display = 'block';
+            titleEl.style.color = '#d35400'; // Force color
+            titleEl.classList.remove('hidden');
+        } else {
+            titleEl.textContent = 'No Title Equipped';
+            titleEl.style.display = 'block';
+            titleEl.style.color = '#ccc';
+            titleEl.classList.remove('hidden');
+        }
+    }
+    
+    // Update skin
+    const skin = SKINS.find(s => s.id === currentState.user.current_skin);
+    if (skin) {
+        smileyBtn.textContent = skin.icon;
+    }
+}
+
+async function fetchAchievements() {
+    const list = document.getElementById('achievements-list');
+    list.innerHTML = '<p>Loading...</p>';
+    try {
+        const res = await fetch('/api/user/achievements');
+        const data = await res.json();
+        
+        list.innerHTML = '';
+        
+        // Stats
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'stats-summary';
+        statsDiv.innerHTML = `
+            <p>Games Played: ${data.games_played}</p>
+            <p>Games Won: ${data.games_won}</p>
+            <p>Mines Hit: ${data.mines_hit}</p>
+        `;
+        list.appendChild(statsDiv);
+
+        // Titles
+        const titlesDiv = document.createElement('div');
+        titlesDiv.innerHTML = '<h3>Unlocked Titles (Click to Equip)</h3>';
+        if (data.unlocked_titles.length === 0) {
+            titlesDiv.innerHTML += '<p>No titles yet.</p>';
+        } else {
+            const ul = document.createElement('ul');
+            ul.className = 'titles-list';
+            data.unlocked_titles.forEach(title => {
+                const li = document.createElement('li');
+                li.textContent = title;
+                li.className = 'title-item';
+                
+                if (title === currentState.user.current_title) {
+                    li.classList.add('equipped');
+                    li.textContent += ' (Equipped)';
+                }
+                
+                li.addEventListener('click', async () => {
+                    const res = await fetch('/api/user/title', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ title: title })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        currentState.user.current_title = title;
+                        updateUIWithUser();
+                        fetchAchievements(); // Refresh list
+                    }
+                });
+                
+                ul.appendChild(li);
+            });
+            titlesDiv.appendChild(ul);
+        }
+        list.appendChild(titlesDiv);
+
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p>Error loading achievements.</p>';
+    }
 }
 
 async function handleLogin(e) {
@@ -375,6 +555,8 @@ async function handleLogin(e) {
         document.getElementById('auth-modal').classList.add('hidden');
         // Refresh full user data to get skins
         checkUserSession();
+        // Re-enable close button
+        document.querySelector('#auth-modal .close-modal').style.display = 'block';
     } else {
         alert(data.error);
     }
@@ -397,6 +579,8 @@ async function handleRegister(e) {
         updateUIWithUser();
         document.getElementById('auth-modal').classList.add('hidden');
         checkUserSession();
+        // Re-enable close button
+        document.querySelector('#auth-modal .close-modal').style.display = 'block';
     } else {
         alert(data.error);
     }
@@ -439,17 +623,8 @@ async function handleRecovery() {
 }
 
 // Shop & UI
-function updateUIWithUser() {
-    if (currentState.user) {
-        const skin = SKINS.find(s => s.id === currentState.user.current_skin);
-        if (skin) smileyBtn.textContent = skin.icon;
-    }
-}
+// updateUIWithUser is defined above
 
-function updateUserProfile() {
-    document.getElementById('profile-name').textContent = currentState.user.username;
-    document.getElementById('profile-coins').textContent = currentState.user.coins;
-}
 
 function renderShop() {
     const list = document.getElementById('skin-list');
@@ -510,4 +685,47 @@ async function handleSkinClick(skin, isOwned) {
 
 function showModal(id) {
     document.getElementById(id).classList.remove('hidden');
+}
+
+async function fetchRankings(difficulty) {
+    const list = document.getElementById('ranking-list');
+    list.innerHTML = '<p>Loading...</p>';
+    
+    try {
+        const response = await fetch(`/api/rankings/${difficulty}`);
+        const data = await response.json();
+        
+        list.innerHTML = '';
+        if (data.length === 0) {
+            list.innerHTML = '<p>No records yet.</p>';
+            return;
+        }
+        
+        const table = document.createElement('table');
+        table.className = 'ranking-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>User</th>
+                    <th>Time</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.map((score, index) => `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${score.username}</td>
+                        <td>${score.time}s</td>
+                        <td>${score.date.split(' ')[0]}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+        list.appendChild(table);
+    } catch (error) {
+        console.error('Error fetching rankings:', error);
+        list.innerHTML = '<p>Error loading rankings.</p>';
+    }
 }

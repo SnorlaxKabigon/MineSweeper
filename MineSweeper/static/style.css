@@ -46,9 +46,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #ffff00; /* Default yellow */
-    border-radius: 50%;
-    border: 2px solid #000;
+    background-color: transparent;
+    border: none;
 }
 
 .game-info {
@@ -170,4 +169,97 @@ body {
 
 .skin-item.selected {
     border: 2px solid blue;
+}
+
+/* Ranking Styles */
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.ranking-table th, .ranking-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.ranking-table th {
+    background-color: #f2f2f2;
+}
+
+.ranking-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.rank-tab-btn {
+    padding: 5px 10px;
+    margin: 0 2px;
+    cursor: pointer;
+    background-color: #eee;
+    border: 1px solid #ccc;
+}
+
+.rank-tab-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Control Bar */
+.control-bar {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background-color: #ddd;
+    border-bottom: 1px solid #999;
+}
+
+.control-btn {
+    padding: 10px 20px;
+    margin: 0 10px;
+    font-size: 1.2rem;
+    border: 2px solid #666;
+    background-color: #eee;
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: #0056b3;
+}
+
+/* Achievements */
+.achievements-list {
+    text-align: left;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.stats-summary {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+}
+
+.stats-summary p {
+    margin: 5px 0;
+}
+
+.title-display {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin: 5px 0; /* Reset margin */
+    min-height: 1.2em;
+    display: block;
+    width: 100%;
+    text-align: center;
 }
