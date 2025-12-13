@@ -201,9 +201,30 @@ function placeMines(excludeIndex) {
     let minesPlaced = 0;
     const totalCells = config.rows * config.cols;
     
+    // Reset mines
+    currentState.board.forEach(cell => {
+        cell.isMine = false;
+        cell.neighborCount = 0;
+    });
+
+    // Create exclusion set (3x3 area)
+    const excluded = new Set();
+    const r = Math.floor(excludeIndex / config.cols);
+    const c = excludeIndex % config.cols;
+    
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols) {
+                excluded.add(nr * config.cols + nc);
+            }
+        }
+    }
+    
     while (minesPlaced < config.mines) {
         const idx = Math.floor(Math.random() * totalCells);
-        if (idx !== excludeIndex && !currentState.board[idx].isMine) {
+        if (!excluded.has(idx) && !currentState.board[idx].isMine) {
             currentState.board[idx].isMine = true;
             minesPlaced++;
         }
@@ -215,6 +236,112 @@ function placeMines(excludeIndex) {
             currentState.board[i].neighborCount = countMinesAround(i, config.rows, config.cols);
         }
     }
+}
+
+function attemptSolvableBoard(excludeIndex) {
+    const maxAttempts = 50;
+    console.log("Generating solvable board...");
+    for (let i = 0; i < maxAttempts; i++) {
+        placeMines(excludeIndex);
+        if (isSolvable(excludeIndex)) {
+            console.log(`Solvable board found in ${i + 1} attempts`);
+            return;
+        }
+    }
+    console.warn("Could not generate a fully solvable board, using last attempt");
+}
+
+function isSolvable(startIndex) {
+    const config = CONFIG[currentState.difficulty];
+    const totalCells = config.rows * config.cols;
+    
+    // Clone board state for simulation
+    let simBoard = currentState.board.map(c => ({
+        isMine: c.isMine,
+        neighborCount: c.neighborCount,
+        revealed: false,
+        flagged: false
+    }));
+    
+    let revealedCount = 0;
+    
+    // Helper to reveal in simulation
+    function simReveal(idx) {
+        if (simBoard[idx].revealed || simBoard[idx].flagged) return;
+        simBoard[idx].revealed = true;
+        revealedCount++;
+        
+        if (simBoard[idx].neighborCount === 0) {
+            const r = Math.floor(idx / config.cols);
+            const c = idx % config.cols;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols) {
+                        simReveal(nr * config.cols + nc);
+                    }
+                }
+            }
+        }
+    }
+    
+    simReveal(startIndex);
+    
+    let changed = true;
+    while (changed) {
+        changed = false;
+        
+        for (let i = 0; i < totalCells; i++) {
+            if (simBoard[i].revealed && simBoard[i].neighborCount > 0) {
+                let hiddenNeighbors = [];
+                let flaggedNeighbors = 0;
+                
+                const r = Math.floor(i / config.cols);
+                const c = i % config.cols;
+                
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols) {
+                            const nIdx = nr * config.cols + nc;
+                            if (!simBoard[nIdx].revealed) {
+                                if (simBoard[nIdx].flagged) {
+                                    flaggedNeighbors++;
+                                } else {
+                                    hiddenNeighbors.push(nIdx);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (hiddenNeighbors.length === 0) continue;
+                
+                // Logic 1: All neighbors are mines
+                if (simBoard[i].neighborCount === hiddenNeighbors.length + flaggedNeighbors) {
+                    hiddenNeighbors.forEach(idx => {
+                        if (!simBoard[idx].flagged) {
+                            simBoard[idx].flagged = true;
+                            changed = true;
+                        }
+                    });
+                }
+                
+                // Logic 2: All neighbors are safe
+                else if (simBoard[i].neighborCount === flaggedNeighbors) {
+                    hiddenNeighbors.forEach(idx => {
+                        simReveal(idx);
+                        changed = true;
+                    });
+                }
+            }
+        }
+    }
+    
+    return revealedCount === totalCells - config.mines;
 }
 
 function countMinesAround(index, rows, cols) {
@@ -247,7 +374,7 @@ function handleCellClick(index) {
     if (currentState.board[index].flagged || currentState.board[index].question) return;
     
     if (currentState.firstClick) {
-        placeMines(index);
+        attemptSolvableBoard(index);
         currentState.firstClick = false;
         startTimer();
     }
